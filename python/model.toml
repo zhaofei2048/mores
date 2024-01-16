@@ -1,0 +1,31 @@
+# This is a parameter specification file for MOon REgolith Scattering (MORES) model
+
+# The radar
+[radar]
+f = 2.38e9  # frequency
+
+# The upper surface
+[surface]
+delta = 1.26e-2     # RMS height of the rough surface
+corr_len = 6.3e-2  # correlation length of the rough surface
+
+# The layer
+[layer]
+thickness = 5.0 # thickness (meters) of the layer, can be None?
+epsilon_r_background = [2.7, -0.1]  # [a, b]=a+bj is the relative complex dielectric constant of background medium
+epsilon_r_particle = [8.0, -0.1]    # [a, b]=a+bj is the relative complex dielectric constant of the particles (inclusion)
+axis_ratio = 2                       # The axis ratio of the particle
+# The particle size can be
+# 1) single-size: [radius, fs] where radius is the radius of equivalent volume sphere, fs is the volume fraction of inclusions
+# 2) multi-size: [0, Dmax, N0, Lambda] where Dmax is the maximum of diameter of the particles and Lambda and mu are parameters for ExponentialPSD
+#   N(D)=N0*exp(-Lambda*D)
+particle_size = [12.6e-2, 0.004]
+# The particle orientation can be
+# 1) single-orientation: [alpha, beta] are the Euler angle alpha and beta of the particles orientation
+# 2) multi-orientation: ...
+particle_orientation = [0, 0]
+
+# The subsurface
+# [subsurface]
+# delta_sub = 1.26e-2     # RMS height of the rough surface
+# corr_len_sub = 12.6e-2  # correlation length of the rough surface
