@@ -7,22 +7,23 @@ Description:
 """
 import numpy as np
 import scipy
-import scipy.constants as C
+import scipy.constants as sci_const
 from scipy.integrate import trapz
 
-from RayleighSpherekskaeps import RayleighSpherekskaeps
-from particle_utils import scattering_cross_section_rayleigh_sphere, absorption_cross_section_rayleigh_sphere
+from .RayleighSpherekska import RayleighSpherekska
+from .particle_utils import scattering_cross_section_rayleigh_sphere, absorption_cross_section_rayleigh_sphere
 
 
-
-class RayleighSphere(RayleighSpherekskaeps):
+class RayleighSphere(RayleighSpherekska):
     """
     Rayleigh sphere layers with multi-sizes, see Ulaby 2014, p474
     """
-    def __init__(self, f, epsr_background, epsr_particle, particle_size, thickness=None, num_points=1024):
+    def __init__(self, f, thickness=None, epsr_background=1.0, 
+                 epsr_particle=1.0, particle_size=(1.0, 1.0), num_points=1024):
         """
         INPUT:
             f: frequency (Hz) of the incident waves
+            thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
             epsr_background: relative complex dielectric constant of the background medium
             epsr_particle: relative complex dielectric constant of the particle
             particle_size: can be a 1)1x2 tuple (radius, fs) = radius of equivalent (volume) sphere, volume fraction of the particles
@@ -30,17 +31,19 @@ class RayleighSphere(RayleighSpherekskaeps):
                               the size distribution function (callable) of particles defined in (0, Dmax), the integration of size_distribution_func between 0 to
                               Dmax should equal to n0, i.e., the number concentration of particles in a unit volume. Note the unit should be meters.
                               e.g. size_distribution_func(D) -> N(D)
-            thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
             num_points: num of discrete points to calculate the size averaged parameters
         """
         # particle_orientation = (0, 0)
         # particle_shape=(1, 'SPHEROID')
         # super(RayleighSphere, self).__init__(f, epsr_background, epsr_particle, particle_size, particle_orientation,
         #                                      particle_shape, thickness)
+        self.epsr_particle = epsr_particle
+        self.epsr = epsr_particle / epsr_background # relative complex diel. of particles to that of background medium
+        self.refractive_index = np.sqrt(self.epsr)
         epsr = epsr_particle / epsr_background
-        Lambda0 = C.speed_of_light / f  # wavelength in the free space
+        Lambda0 = sci_const.speed_of_light / f  # wavelength in the free space
         Lambda = Lambda0 / np.sqrt(np.real(epsr_background)) # wavelength in the background medium
-        k = 2 * np.pi / Lambda  
+        # k = 2 * np.pi / Lambda  
 
         # particle size
         if len(particle_size) == 2:
@@ -63,7 +66,6 @@ class RayleighSphere(RayleighSpherekskaeps):
         else:
             raise ValueError("Parameter particle_size should be a tuple with 2 or 3 elements!")
         
-
         # volume scattering coefficient & volume absorption coefficient
         if self.is_multi_sizes is False:
             Chi = 2 * np.pi * self.radius / Lambda
@@ -80,5 +82,6 @@ class RayleighSphere(RayleighSpherekskaeps):
             ks = trapz(Qs * psd_W, psd_D)
             ka = trapz(Qa * psd_W, psd_D)
 
-        super(RayleighSphere, self).__init__(f, epsr_background, ks, ka, self.fs, thickness)
+        super(RayleighSphere, self).__init__(f=f, thickness=thickness, epsr_background=epsr_background, 
+                                             ks=ks, ka=ka, vol_frac=self.fs)
 

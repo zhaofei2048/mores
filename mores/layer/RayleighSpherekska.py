@@ -6,14 +6,14 @@ Description:
     Rayleigh sphere layer with prescribed ks, ka
 """
 import numpy as np
-from Prescribedkskaeps import Prescribedkskaeps
-from postprocessing import scattering_amplitudes_to_Mueller
+from .Isotropickska import Isotropickska
+# from postprocessing import scattering_amplitudes_to_Mueller
 
-class RayleighSpherekskaeps(Prescribedkskaeps):
+class RayleighSpherekska(Isotropickska):
     """
     Rayleigh sphere layer with prescribed ks, ka
     """
-    def __init__(self, f, epsr_background, ks, ka, vol_frac=0, thickness=None):
+    def __init__(self, f, thickness=None, epsr_background=1.0, ks=0, ka=0, vol_frac=0):
         """
         INPUT:
             f: frequency (Hz) of the incident waves
@@ -23,7 +23,7 @@ class RayleighSpherekskaeps(Prescribedkskaeps):
             vol_frac: volume fraction of the particles
             thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
         """
-        super(RayleighSpherekskaeps, self).__init__(f, epsr_background, ks, ka, vol_frac, thickness)
+        super(RayleighSpherekska, self).__init__(f=f, thickness=thickness, epsr_background=epsr_background, ks=ks, ka=ka, vol_frac=vol_frac)
 
    
     def phase_matrix(self, geom):

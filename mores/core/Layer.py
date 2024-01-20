@@ -5,12 +5,14 @@ Create: 2023-08-29
 Description:
     Abstract class of a layer
 
-Updated:
+Update:
     2024-01-13: Add comments on interface to the Layer class
 """
+
 from abc import ABC, abstractmethod
 import numpy as np
-import scipy.constants as C
+import scipy.constants as sci_const
+
 
 class Layer(ABC):
     """
@@ -21,25 +23,25 @@ class Layer(ABC):
         Kab: attribute, background absorption coefficient
         phase_matrix(geom):
         extinction_matrix(direction): direction is the propagation direction
+        single_scattering_albedo(): return the ssa of the layer
     """
-    def __init__(self, f, epsr_background, vol_frac=0.0, thickness=None):
+
+    def __init__(self, f, thickness=None, epsr_background=1.0):
         """
         Construct a layer
         INPUT:
             f: frequency (Hz) of the incident waves
-            epsr_background: relative complex dielectric constant of the background medium
             thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
-            vol_frac: volume fraction of the particles
+            epsr_background: relative complex dielectric constant of the background medium
         """
         self.freq = f
-        self.Lambda0 = C.speed_of_light / f  # wavelength in the free space
+        self.Lambda0 = sci_const.speed_of_light / f  # wavelength in the free space
         self.k0 = 2 * np.pi / self.Lambda0   # wavenumber in the free space
         self.epsr_background = epsr_background
         self.Lambda = self.Lambda0 / np.sqrt(np.real(self.epsr_background)) # wavelength in the background medium
         self.k = 2 * np.pi / self.Lambda                                    # wavenumber in the background medium        
 
-        self.Kab = -2 * self.k0 * np.sqrt(epsr_background).imag * (1 - vol_frac)
-        self.ssa = None
+        v= None
 
         # thickness
         if thickness is None:
@@ -47,6 +49,7 @@ class Layer(ABC):
             self.thickness = self.__penetration_depth_scatterer_free()
         else:
             self.thickness = thickness       
+
 
     @abstractmethod
     def phase_matrix(self, geom):
@@ -62,6 +65,7 @@ class Layer(ABC):
         """
         pass
 
+
     @abstractmethod
     def extinction_matrix(self, direction):
         """
@@ -75,14 +79,14 @@ class Layer(ABC):
         """
         pass
 
-    @abstractmethod
+
     def single_scattering_albedo(self):
         """The single-scattering albdeo of the particles in the layer.
         
         Returns:
             ssa: single-scattering albedo in [0, 1]
         """
-        pass
+        return self.ssa
 
 
     def __penetration_depth_scatterer_free(self):

@@ -11,7 +11,7 @@ import importlib
 import inspect
 
 
-def do_import_class(modulename, classname):
+def do_import_class(modulename, classname=None):
     """Import the class, adapted from SMRT
     """
     # check the module

@@ -7,6 +7,8 @@ Description:
 
 Updated:
     2024-01-15: Corrected the subsurface term, the non-coherent Mueller matrix is not needed to be divided by (4*np.pi)
+    2024-01-20: The iscoherent option is added for subsurface-volume scattering calculation.
+    2024-01-20: The incoherently transmitted scattering term is explicitly surpressed in Mue_subsurface().
 """
 
 import numpy as np
@@ -16,13 +18,15 @@ from scipy.integrate import quad_vec
 # from TmatrixScatterer import TmatrixScatterer
 # from Prescribedkskaeps import Prescribedkskaeps
 # from RayleighSphereKsKa import RayleighSphereKsKa
-from fresnel import refraction_angle
+from mores.interface.fresnel import refraction_angle
 import warnings
+
 
 class VRT:
     """
     VRT first-order iterative solver class
     """
+    
     def __init__(self, surface, layer, subsurface=None):
         """
         Init the VRT solver with MORES model parameters
@@ -35,6 +39,7 @@ class VRT:
         self.layer = layer
         self.subsurface = subsurface
         self.__check()
+
 
     def __check(self):
         """ Check the model
@@ -185,9 +190,62 @@ class VRT:
         return Mue
     
 
-    def Mue_subsurface(self, geom, path=0):
-        """Mueller matrix for volume scattering in forward scattering alignment (FSA) convention from subsurface.
+    def Mue_subsurface(self, geom):
+        """Mueller matrix for subsurface scattering in forward scattering alignment (FSA) convention.
+            The inchohrently transmitted scattering term are not included. Only scattering path 1 for Tc01->Rn12->Tc10 is calculated.
+        Args:
+            geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
+                            theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+            path: scattering path 1 for Tc01->Rn12->Tc10, path 2 for Tc01->Rc12->Tn10, path 3 for Tn01->Rc12->Tc10
+                and 0 for total contribution=path_1+path_2+path_3
 
+        Returns:
+            Mue: 4x4 real Mueller matrix
+        """
+        if self.subsurface is None:
+            return np.zeros((4, 4))
+        # prepare
+        theta_s, phi_s, theta_i, phi_i = geom
+        theta_it = self.surface.refraction_angle(theta_i)
+        theta_st = self.surface.refraction_angle(theta_s)
+        d = self.layer.thickness
+
+        Tc01 = self.surface.M_coh_T(theta_i)
+        Tc10 = self.surface.M_coh_T(theta_st, False)
+        # Tn01 = self.surface.Mue_noncoh_T((theta_st, phi_s, theta_i, phi_i)) / (np.cos(np.deg2rad(theta_st)))
+        # Tn10 = self.surface.Mue_noncoh_T((theta_s, phi_s, theta_it, phi_i)) / (np.cos(np.deg2rad(theta_s)))
+
+        # Rc12 = self.subsurface.M_coh_R(theta_it)
+        Rn12 = self.subsurface.Mue_noncoh_R((theta_st, phi_s, theta_it, phi_i)) / (np.cos(np.deg2rad(theta_st)))
+
+        # 0: theta_it down, 1: theta_it up, 2: theta_st down, 3: theta_st up
+        directions = [(180-theta_it, phi_i), (theta_st, phi_s)]
+        EDts = [self.__extinction_eig(direction) for direction in directions]
+        EDEinvs = [self.__extinction_propagate(EDt, -d) for EDt in EDts]
+
+        # path 1: coherent T -> incoherent R -> coherent T
+        M1 = Tc10 @ EDEinvs[1] @ Rn12 @ EDEinvs[0] @ Tc01
+        # path 2: coherent T -> coherent R -> incoherent T
+        # M2 = Tn10 @ EDEinvs[1] @ Rc12 @ EDEinvs[0] @ Tc01
+        # path 3: incoherent T -> coherent R -> coherent T
+        # M3 = Tc10 @ EDEinvs[3] @ Rc12 @ EDEinvs[2] @ Tn01
+        # Ms = [M1, M2, M3]
+
+        # path = 1
+        # if path == 0:
+            # M = M1 + M2 + M3
+        # else:
+            # M = Ms[path-1]
+        
+        Mue = np.cos(np.deg2rad(theta_s)) * np.real(M1)
+        # Mue = np.cos(np.deg2rad(theta_s)) * Rn12
+
+        return Mue
+    
+
+    def Mue_subsurface_all(self, geom, path=0):
+        """Mueller matrix for subsurface scattering in forward scattering alignment (FSA) convention.
+            The inchohrently transmitted scattering term are included.
         Args:
             geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
                             theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
@@ -218,11 +276,11 @@ class VRT:
         EDts = [self.__extinction_eig(direction) for direction in directions]
         EDEinvs = [self.__extinction_propagate(EDt, -d) for EDt in EDts]
 
-        # path 1
+        # path 1: coherent T -> incoherent R -> coherent T
         M1 = Tc10 @ EDEinvs[3] @ Rn12 @ EDEinvs[0] @ Tc01
-        # path 2
+        # path 2: coherent T -> coherent R -> incoherent T
         M2 = Tn10 @ EDEinvs[1] @ Rc12 @ EDEinvs[0] @ Tc01
-        # path 3
+        # path 3: incoherent T -> coherent R -> coherent T
         M3 = Tc10 @ EDEinvs[3] @ Rc12 @ EDEinvs[2] @ Tn01
         Ms = [M1, M2, M3]
 
@@ -238,15 +296,15 @@ class VRT:
         return Mue
 
 
-    def Mue_subsurface_volume(self, geom, path=0):
-        """Mueller matrix for volume scattering in forward scattering alignment (FSA) convention from subsurface-volume.
+    def Mue_subsurface_volume(self, geom, path=0, iscoherent=False):
+        """Mueller matrix for subsurface-volume interaction scattering in forward scattering alignment (FSA) convention.
 
         Args:
             geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
                             theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
             path: scattering path 1 for subsurface->volume interaction and 2 for volume->subsurface interaction
                 and 0 for total contribution=path_1+path_2
-
+            iscoherent: True or False (default) for that path 1 and path 2 components should be coherently added. This parameter will only take effect when the path is set to 0.
         Returns:
             Mue: 4x4 real Mueller matrix
         """
@@ -305,6 +363,8 @@ class VRT:
         
         if path == 0:
             M = M1 + M2
+            if iscoherent == True:  # coherent addition
+                M = 2 * M
         else:
             M = Ms[path-1]
         
@@ -314,90 +374,94 @@ class VRT:
         return Mue
 
 
-    def Mue_volume_nosurface(self, geom):
-        """Mueller matrix for volume scattering in forward scattering alignment (FSA) convention without surface (or is transparent).
+    ###################################################
+    # Test methods
 
-            For validation with Tsang and SMRT.
-            But the refraction effect at the surface is still accounted for, if the medium of layer is not air.
+    # def Mue_volume_nosurface(self, geom):
+    #     """Mueller matrix for volume scattering in forward scattering alignment (FSA) convention without surface (or is transparent).
 
-        Args:
-            geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
-                            theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+    #         For validation with Tsang and SMRT.
+    #         But the refraction effect at the surface is still accounted for, if the medium of layer is not air.
 
-        Returns:
-            Mue: 4x4 real Mueller matrix
+    #     Args:
+    #         geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
+    #                         theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+
+    #     Returns:
+    #         Mue: 4x4 real Mueller matrix
         
-        Note:
-            The utility of this function can be replaced with a combination use of transparent surface and `self.Mue_volume`.
-        """
-        theta_s, phi_s, theta_i, phi_i = geom
-        # refraction at the interface though transparent
-        theta_it = refraction_angle(theta_i, self.layer.epsr_background)
-        theta_st = refraction_angle(theta_s, self.layer.epsr_background)
+    #     Note:
+    #         The utility of this function can be replaced with a combination use of transparent surface and `self.Mue_volume`.
+    #     """
+    #     theta_s, phi_s, theta_i, phi_i = geom
+    #     # refraction at the interface though transparent
+    #     theta_it = refraction_angle(theta_i, self.layer.epsr_background)
+    #     theta_st = refraction_angle(theta_s, self.layer.epsr_background)
 
-        d = self.layer.thickness
-        EDt1 = self.__extinction_eig((180-theta_it, phi_i))
-        P = self.layer.phase_matrix((theta_st, phi_s, 180-theta_it, phi_i))
-        EDt2 = self.__extinction_eig((theta_st, phi_s))
+    #     d = self.layer.thickness
+    #     EDt1 = self.__extinction_eig((180-theta_it, phi_i))
+    #     P = self.layer.phase_matrix((theta_st, phi_s, 180-theta_it, phi_i))
+    #     EDt2 = self.__extinction_eig((theta_st, phi_s))
 
-        fz = lambda z: (self.__extinction_propagate(EDt2, z) 
-                        @ P
-                        @ self.__extinction_propagate(EDt1, z))
-        Fz,err = quad_vec(fz, -d, 0)
-        # Fz = np.ones((4, 4))
-        # print('Fz')
-        # print(Fz)
-        # Mue volume
-        # Mue = np.cos(np.deg2rad(theta_s)) / np.cos(np.deg2rad(theta_s)) * (Fz)
-        M = Fz
+    #     fz = lambda z: (self.__extinction_propagate(EDt2, z) 
+    #                     @ P
+    #                     @ self.__extinction_propagate(EDt1, z))
+    #     Fz,err = quad_vec(fz, -d, 0)
+    #     # Fz = np.ones((4, 4))
+    #     # print('Fz')
+    #     # print(Fz)
+    #     # Mue volume
+    #     # Mue = np.cos(np.deg2rad(theta_s)) / np.cos(np.deg2rad(theta_s)) * (Fz)
+    #     M = Fz
 
-        Mue = np.cos(np.deg2rad(theta_s)) * np.real(M)
+    #     Mue = np.cos(np.deg2rad(theta_s)) * np.real(M)
 
-        return Mue
+    #     return Mue
 
 
-    def test_Mue_volume_nosurface(self, geom):
-        """Mueller matrix for volume scattering in forward scattering alignment (FSA) convention without surface (or is transparent).
+    # def test_Mue_volume_nosurface(self, geom):
+    #     """Mueller matrix for volume scattering in forward scattering alignment (FSA) convention without surface (or is transparent).
 
-            For validation with Tsang and SMRT.
-            But the refraction effect at the surface is still accounted for, if the medium of layer is not air.
+    #         For validation with Tsang and SMRT.
+    #         But the refraction effect at the surface is still accounted for, if the medium of layer is not air.
 
-        Args:
-            geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
-                            theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+    #     Args:
+    #         geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
+    #                         theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
 
-        Returns:
-            Mue: 4x4 real Mueller matrix
+    #     Returns:
+    #         Mue: 4x4 real Mueller matrix
         
-        Note:
-            The utility of this function can be replaced with a combination use of transparent surface and `self.Mue_volume`.
-        """
-        print("test_Mue_volume_nosurface")
-        theta_s, phi_s, theta_i, phi_i = geom
-        # refraction at the interface though transparent
-        theta_it = theta_i # 入射时假设不变化，出射时才折射
-        theta_st = refraction_angle(theta_s, self.layer.epsr_background)
+    #     Note:
+    #         The utility of this function can be replaced with a combination use of transparent surface and `self.Mue_volume`.
+    #     """
+    #     print("test_Mue_volume_nosurface")
+    #     theta_s, phi_s, theta_i, phi_i = geom
+    #     # refraction at the interface though transparent
+    #     theta_it = theta_i # 入射时假设不变化，出射时才折射
+    #     theta_st = refraction_angle(theta_s, self.layer.epsr_background)
 
-        d = self.layer.thickness
-        EDt1 = self.__extinction_eig((180-theta_it, phi_i))
-        P = self.layer.phase_matrix((theta_st, phi_s, 180-theta_it, phi_i))
-        EDt2 = self.__extinction_eig((theta_st, phi_s))
+    #     d = self.layer.thickness
+    #     EDt1 = self.__extinction_eig((180-theta_it, phi_i))
+    #     P = self.layer.phase_matrix((theta_st, phi_s, 180-theta_it, phi_i))
+    #     EDt2 = self.__extinction_eig((theta_st, phi_s))
 
-        fz = lambda z: (self.__extinction_propagate(EDt2, z) 
-                        @ P
-                        @ self.__extinction_propagate(EDt1, z))
-        Fz,err = quad_vec(fz, -d, 0)
-        # Fz = np.ones((4, 4))
-        # print('Fz')
-        # print(Fz)
-        # Mue volume
-        # Mue = np.cos(np.deg2rad(theta_s)) / np.cos(np.deg2rad(theta_s)) * (Fz)
-        M = Fz
+    #     fz = lambda z: (self.__extinction_propagate(EDt2, z) 
+    #                     @ P
+    #                     @ self.__extinction_propagate(EDt1, z))
+    #     Fz,err = quad_vec(fz, -d, 0)
+    #     # Fz = np.ones((4, 4))
+    #     # print('Fz')
+    #     # print(Fz)
+    #     # Mue volume
+    #     # Mue = np.cos(np.deg2rad(theta_s)) / np.cos(np.deg2rad(theta_s)) * (Fz)
+    #     M = Fz
 
-        Mue = np.cos(np.deg2rad(theta_s)) * np.real(M)
+    #     Mue = np.cos(np.deg2rad(theta_s)) * np.real(M)
 
-        return Mue
+    #     return Mue
     
+
     # def Mue_smooth_subsurface_nosurface(self, geom):
     #     """
     #     Mueller matrix for volume scattering in forward scattering alignment (FSA) convention with smooth subsurface, but without surface.

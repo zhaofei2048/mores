@@ -6,38 +6,32 @@ Description:
     A layer with prescribed/predifined volume scattering coefficient ks & volume absorption coefficient ka and 
     equivalent complex dielectric constant of background medium.
 """
-import numpy as np
-from Layer import Layer
 
-class Prescribedkskaeps(Layer):
+import numpy as np
+from ..core.Layer import Layer
+
+
+class Isotropickska(Layer):
     """
     A isotropic! layer defined by ks, ka, and epsr_background (Ulaby2014, p474, eq. 11.49).
     """
-    def __init__(self, f, epsr_background, ks, ka, vol_frac=0, thickness=None):
+    def __init__(self, f, thickness=None, epsr_background=1.0, ks=0, ka=0, vol_frac=0):
         """
         INPUT:
             f: frequency (Hz) of the incident waves
+            thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
             epsr_background: relative complex dielectric constant of the background medium
             ks: volume scattering coefficient of the scatterer
             ka: absorption coefficients of the scatterer
             vol_frac: volume fraction of the particles
-            thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
         """
-        super(Prescribedkskaeps, self).__init__(f=f, epsr_background=epsr_background, vol_frac=vol_frac, thickness=thickness)
+        super(Isotropickska, self).__init__(f=f, thickness=thickness, epsr_background=epsr_background)
         self.ks = ks
         # self.ka = ka + self.Kab # background medium absorption have already been accounted for in VRT solver
         self.ka = ka
         self.ke = ks + ka
+        self.Kab = -2 * self.k0 * np.sqrt(self.epsr_background).imag * (1 - vol_frac)
         self.ssa = self.ks / (self.ke + self.Kab)
-
-
-    def single_scattering_albedo(self):
-        """The single-scattering albdeo of the particles in the layer.
-        
-        Returns:
-            ssa: single-scattering albedo in [0, 1]
-        """
-        return self.ssa
 
 
     def print_params(self):

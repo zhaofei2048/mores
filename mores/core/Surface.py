@@ -4,8 +4,13 @@ Create: 2023-08-30
 
 Description:
     Abstract class of surface
+
+Update:
+    2024-01-17: Change the non-coherent abstract method to real method.
 """
 from abc import ABC, abstractmethod
+import numpy as np
+
 
 class Surface(ABC):
     """
@@ -29,6 +34,7 @@ class Surface(ABC):
         """
         pass
 
+
     @abstractmethod
     def M_coh_T(self, theta_i, isdown=True):
         """
@@ -41,7 +47,7 @@ class Surface(ABC):
         """
         pass
 
-    @abstractmethod
+
     def Mue_noncoh_R(self, geom, isdown=True):
         """
         Non-coherent reflection at the surface
@@ -54,9 +60,9 @@ class Surface(ABC):
         OUTPUT:
             R: 4x4 real Mueller matrix
         """
-        pass
+        return np.zeros((4, 4))
 
-    @abstractmethod
+
     def Mue_noncoh_T(self, geom, isdown=True):
         """
         Non-coherent transmission at the surface
@@ -69,9 +75,9 @@ class Surface(ABC):
         OUTPUT:
             T: 4x4 real Mueller matrix
         """
-        pass
+        return np.zeros((4, 4))
 
-    @abstractmethod
+
     def refraction_angle(self, theta_i, isdown=True):
         """
         Calculate refraction angle at this interface(surface).
@@ -81,4 +87,4 @@ class Surface(ABC):
         OUTPUT:
             theta_t: the refraction angle (deg)
         """
-        pass
+        return theta_i

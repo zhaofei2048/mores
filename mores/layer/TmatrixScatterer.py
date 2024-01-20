@@ -5,21 +5,27 @@ Create: 2023-08-20
 Description:
     A layer consists of discrete scatterers (solved by Tmatrix numeric method)
 """
-from ScattererLayer import ScattererLayer
+
+from .ScattererLayer import ScattererLayer
 import numpy as np
 from pytmatrix import tmatrix, orientation
 from pytmatrix.psd import PSDIntegrator
 from pytmatrix import scatter
 
+
 class TmatrixScatterer(ScattererLayer):
     """
     A layer consists of discrete scatterers (solved by Tmatrix numeric method)
     """
-    def __init__(self, f, epsr_background, epsr_particle, particle_size, particle_orientation=0, particle_shape=(1, 'SPHEROID'), thickness=None):
+
+    def __init__(self, f, thickness=None, epsr_background=1.0, 
+                 epsr_particle=1.0, particle_size=(1.0, 1.0), 
+                 particle_orientation=0, particle_shape=(1, 'SPHEROID'), num_points=1024):
         """
         Construct a discrete scatterer layer driven by pytmatrix
         INPUT:
             f: frequency (Hz) of the incident waves
+            thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
             epsr_background: relative complex dielectric constant of the background medium
             epsr_particle: relative complex dielectric constant of the particle
             particle_size: can be a 1)1x2 tuple (radius, fs) = radius of equivalent (volume) sphere, volume fraction of the particles
@@ -30,9 +36,11 @@ class TmatrixScatterer(ScattererLayer):
                                 or 2) scalar 0=uniform distribution, a value std_orien>0 = specifies the standard deviation of the angle (deg) with respect to
                                 vertical orientation (canting angle)
             particle_shape: (axis_ratio, shape_type) = the horizontal-to-rotational axis ratio, shape_type can be 'SPHEROID' or 'CYLINDER'
-            thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
+            num_points: num of discrete points to calculate the size averaged parameters
         """
-        super(TmatrixScatterer, self).__init__(f, epsr_background, epsr_particle, particle_size, particle_orientation, particle_shape, thickness)
+        super(TmatrixScatterer, self).__init__(f=f, thickness=thickness, epsr_background=epsr_background, 
+                                               epsr_particle=epsr_particle, particle_size=particle_size, 
+                                               particle_orientation=particle_orientation, particle_shape=particle_shape, num_points=num_points)
         if self.shape_type == 'SPHEROID':
             shape_type = tmatrix.Scatterer.SHAPE_SPHEROID
         elif self.shape_type == 'CYLINDER':
@@ -62,7 +70,7 @@ class TmatrixScatterer(ScattererLayer):
             self.scatterer.radius = self.radius
         else:
             # see doc of pytmatrix PSDIntegrator class for more information (PSD = Particle Size Distribution)
-            self.scatterer.psd_integrator = PSDIntegrator(num_points=1024,  # The number of different (equally spaced) particle diameters at which to store the amplitude and phase matrices
+            self.scatterer.psd_integrator = PSDIntegrator(num_points=num_points,  # The number of different (equally spaced) particle diameters at which to store the amplitude and phase matrices (default is 1024)
                                                           D_max=self.Dmax,  # The maximum diameter for which to store the amplitude and phase matrices
                                                           m_func=None,      # The fractive index as a function of size (None for constant fractive index)
                                                           axis_ratio_func=None) # The horizontal-to-rotational axis ratio as a function of size (None for constant axis ratio)

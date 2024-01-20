@@ -9,6 +9,7 @@ Description:
 
 import numpy as np
 
+
 def optical_depth(d, theta_i, ke):
     """
     Optical depth / attenuation of the medium due to extinction
@@ -24,6 +25,7 @@ def optical_depth(d, theta_i, ke):
 
     return tau_p
 
+
 def gamma_trans(d, theta_i, ke):
     """
     One way oblique transmittivity
@@ -38,6 +40,7 @@ def gamma_trans(d, theta_i, ke):
     Gamma = np.exp(-tau_p)
 
     return Gamma
+
 
 class S2RTR:
     """

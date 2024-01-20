@@ -3,11 +3,13 @@ Author: Fei Zhao
 Create: 2023-08-30
 
 Description:
-    Transparent surface
+    Smooth surface, only coherent fresnel scattering is accounted for, with zero diffuse/non-coherent scattering.
 """
-from TransparentSurface import TransparentSurface
+
 import numpy as np
-from fresnel import fresnel_coefficients, refraction_angle, critical_angle
+from .TransparentSurface import TransparentSurface
+from .fresnel import fresnel_coefficients, refraction_angle, critical_angle
+
 
 class SmoothSurface(TransparentSurface):
     """
@@ -36,6 +38,7 @@ class SmoothSurface(TransparentSurface):
                     [0, 0, np.imag(rv * np.conj(rh)), np.real(rv * np.conj(rh))]])
         
         return R
+
 
     def M_coh_T(self, theta_i, isdown=True):
         """
@@ -95,38 +98,10 @@ class SmoothSurface(TransparentSurface):
 
         return T
 
-    def Mue_noncoh_R(self, geom, isdown=True):
-        """
-        Non-coherent reflection at the surface
-        INPUT:
-            geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
-                theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
-                Note that theta_s and theta_i belong to [0, 90] defined in surface scattering coordinate
-                theta_s is the angle between z and ks, while theta_i is the angle between z and -ki
-            isdown: True (default) for downward incident and False for upward incident
-        OUTPUT:
-            R: 4x4 real Mueller matrix
-        """
-        return np.zeros((4, 4))
-
-    def Mue_noncoh_T(self, geom, isdown=True):
-        """
-        Non-coherent transmission at the surface
-        INPUT:
-            geom (tuple): observation angles (theta_t, phi_t, theta_i, phi_i) in degree
-                            theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
-                            Note that theta_t and theta_i belong to [0, 90] defined in surface scattering coordinate
-                            theta_t is the angle between -z and ks, while theta_i is the angle between z and -ki
-            isdown: True (default) for downward incident and False for upward incident
-        OUTPUT:
-            T: 4x4 real Mueller matrix
-        """
-        return np.zeros((4, 4))
-    
     
     def critical_angle(self, isdown=True):
         """
-        Calculate critical angle of the surface
+        Calculate critical angle (total reflection) of the surface
         INPUT:
         OUTPUT:
             theta_c: critical angle (deg)

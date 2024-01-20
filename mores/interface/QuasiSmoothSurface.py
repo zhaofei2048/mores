@@ -3,28 +3,32 @@ Author: Fei Zhao
 Create: 2023-08-19
 
 Description:
-    Rough surface class (with zero diffuse/non-coherent scattering)
+    quasi-smooth surface (with some roughness), only coherent fresnel scattering is accounted for, with zero diffuse/non-coherent scattering. The loss of coherent scattering due to roughness is accounted for.
 """
-import numpy as np
-from fresnel import fresnel_coefficients, refraction_angle
-from SmoothSurface import SmoothSurface
 
-class QuasiSpecularSurface(SmoothSurface):
+import numpy as np
+from .fresnel import refraction_angle
+from .SmoothSurface import SmoothSurface
+
+
+class QuasiSmoothSurface(SmoothSurface):
     """
-    Rough surface but with zero diffuse/non-coherent scattering
+    Quasi-smooth surface (with some roughness), but with zero diffuse/non-coherent scattering
     """
+
     def __init__(self, epsilon_r, kdel):
         """
         Set parameters for characterizing the rough surface
         INPUT:
             epsilon_r: relative dielectric constant
             kdel: k * delta, normalized RMS height
-            kcor: k * corr_len, normalized correlation length
+                It should be noted that the roughness parameter kdel here is defined in free space (k means k0).
         OUTPUT:
             a rough surface instance
         """
-        super(QuasiSpecularSurface, self).__init__(epsilon_r)
+        super(QuasiSmoothSurface, self).__init__(epsilon_r)
         self.kdel = kdel
+
 
     def M_coh_R(self, theta_i, isdown=True):
         """
@@ -35,12 +39,13 @@ class QuasiSpecularSurface(SmoothSurface):
         OUTPUT:
             Rc: 4x4 Stokes matrix for reflection coherent scattering
         """
-        R = super(QuasiSpecularSurface, self).M_coh_R(theta_i, isdown)
+        R = super(QuasiSmoothSurface, self).M_coh_R(theta_i, isdown)
         cs = np.cos(np.deg2rad(theta_i))
         Loss = np.exp(-4 * self.kdel**2 * cs**2)
         Rc = Loss * R
 
         return Rc
+
 
     def M_coh_T(self, theta_i, isdown=True):
         """
@@ -51,7 +56,7 @@ class QuasiSpecularSurface(SmoothSurface):
         OUTPUT:
             Tc: 4x4 Stokes matrix for transmission coherent scattering
         """
-        T = super(QuasiSpecularSurface, self).M_coh_T(theta_i, isdown)
+        T = super(QuasiSmoothSurface, self).M_coh_T(theta_i, isdown)
         if isdown is True:
             epsr = self.epsilon_r
         else:

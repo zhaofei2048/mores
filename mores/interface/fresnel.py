@@ -26,6 +26,7 @@ def fresnel_coefficients(theta_i, epsilon_r):
     
     return rv, rh, tv, th
 
+
 def refraction_angle(theta_i, epsilon_r):
     """
     This equivalent refraction angle reduces to general refraction angle when medium 2 is lossless.
@@ -41,6 +42,7 @@ def refraction_angle(theta_i, epsilon_r):
     theta_t = np.rad2deg(np.arccos(cosphi))
     
     return theta_t
+
 
 def TransmissionAngle(theta_i, epsilon_r):
         """
@@ -61,7 +63,8 @@ def critical_angle(epsilon_r):
     """get the critical angle (total reflection)
 
     Args:
-        epsilon_r: relative dielectric constant of medium 2 to medium 1
+        epsilon_r: relative dielectric constant of medium 2 to medium 1 
+            (only when epsilon_r < 1, the critical angle has meaning).
     
     Returns:
         theta_c: critical angle (deg)
