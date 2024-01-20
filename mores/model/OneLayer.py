@@ -80,4 +80,24 @@ class OneLayer(VRT):
         layer = layer_cls(**self.inclusion_para)
 
         super(OneLayer, self).__init__(surface=surface, layer=layer, subsurface=subsurface)
+    
 
+    def Mue_total(self, geom):
+        """Mueller matrix for total scattering components in forward scattering alignment (FSA) convention.
+
+        The subsurface-volume interaction terms are incoherently added.
+
+        Args:
+            geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
+                            theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+
+        Returns:
+            Mue_total: 4x4 real Mueller matrix
+        """
+        Mue_sur = self.Mue_surface(geom)
+        Mue_vol = self.Mue_volume(geom)
+        Mue_sub = self.Mue_subsurface(geom)
+        Mue_sub_vol = self.Mue_subsurface_volume(geom)
+        Mue_total = Mue_sur + Mue_vol + Mue_sub + Mue_sub_vol
+
+        return Mue_total

@@ -12,13 +12,7 @@ Updated:
 """
 
 import numpy as np
-# import scipy.constants as C
 from scipy.integrate import quad_vec
-# from AIEM import AIEM
-# from TmatrixScatterer import TmatrixScatterer
-# from Prescribedkskaeps import Prescribedkskaeps
-# from RayleighSphereKsKa import RayleighSphereKsKa
-from mores.interface.fresnel import refraction_angle
 import warnings
 
 
