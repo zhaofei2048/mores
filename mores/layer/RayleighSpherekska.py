@@ -20,7 +20,7 @@ class RayleighSpherekska(Isotropickska):
             epsr_background: relative complex dielectric constant of the background medium
             ks: volume scattering coefficient
             ka: volume adsorption coefficient
-            vol_frac: volume fraction of the particles
+            vol_frac: volume fraction of the particles, have no impact on ks and ka
             thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
         """
         super(RayleighSpherekska, self).__init__(f=f, thickness=thickness, epsr_background=epsr_background, ks=ks, ka=ka, vol_frac=vol_frac)

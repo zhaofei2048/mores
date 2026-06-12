@@ -1,4 +1,5 @@
-"""
+"""Fresnel related functions
+
 Author: Fei Zhao
 Create: 2023-08-19
 """

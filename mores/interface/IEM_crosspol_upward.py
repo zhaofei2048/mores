@@ -5,6 +5,8 @@ The orginal version is the matlab code published by Ulaby & Long, 2014, "Microwa
 Author: Fei Zhao
 Create: 2024-01-16
 """
+import math
+
 import numpy as np
 from scipy.integrate import dblquad
 from scipy.special import erfc, erf
@@ -104,7 +106,7 @@ def sigma0_VH_IEM(f, theta_i, epsr, delta, corr_len, spectrum='exp', x=1.5, shad
         n_spec = 1
         while error > 1.0e-8:
             n_spec = n_spec + 1
-            error = (ks2 * (2 * cs) ** 2) ** n_spec / np.math.factorial(n_spec)
+            error = (ks2 * (2 * cs) ** 2) ** n_spec / math.factorial(n_spec)
 
     # -- calculating shadow consideration in single scat(Smith, 1967)
 
@@ -121,7 +123,7 @@ def sigma0_VH_IEM(f, theta_i, epsr, delta, corr_len, spectrum='exp', x=1.5, shad
 
     factorials = {}
     for number in np.arange(1,n_spec+1):
-        factorials[number] = np.math.factorial(number)
+        factorials[number] = math.factorial(number)
 
     svh = dblquad(lambda phi, r : xpol_integralfunc_vec(r, phi, sp, xx, ks2, cs, s,
                                                             kl2, L, er, rss, rvh, n_spec, factorials),

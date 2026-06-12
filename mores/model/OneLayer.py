@@ -24,10 +24,10 @@ class OneLayer(VRT):
             epsr1: background relative dielectric constant of the layer medium
             epsr2: relative dielectric constant of the lower medium
             thickness: thickness of the layer (m)
-            surface: A parameters dict (please reference to the specified surface scattering model) to characterize the upper interface, the 'model' parameter can be used to specify the surface model (default is 'RoughSurface'); and the epsilon_r parameter is not needed; and the frequency-dependent parameters kdel, kcor should be replaced with frequency-independent paramters delta, corr_len.
-            subsurface: A parameters dict {similar to surface} to characterize the lower interface.
+            surface_para: A parameters dict (please reference to the specified surface scattering model) to characterize the upper interface, the 'model' parameter can be used to specify the surface model (default is 'RoughSurface'); and the epsilon_r parameter is not needed; and the frequency-dependent parameters kdel, kcor should be replaced with frequency-independent paramters delta, corr_len.
+            subsurface_para: A parameters dict {similar to surface} to characterize the lower interface.
                 **Note that the subsurface roughness paramters delta, corr_len are implicityly assumed in free space. However, the upper medium above subsurface gernerally has dielectric constant > 1, and hence shorter wavelength. Therefore, same roughness parameters will be generally rougher for subsurface than for surface. The roughness parameters will be amplified by a factor of np.real(np.sqrt(epsr1))
-            inclusion: A parameters dict (please reference to the specified layer scatterer model) to chacterize the inclusions, the 'model' parameter can be used to specify the layer model (default is 'RayleighSpherekska'); and the parameters f, thickness, epsr_background are not needed. Other parameters should be consistent with selected layer model.
+            inclusion_para: A parameters dict (please reference to the specified layer scatterer model) to chacterize the inclusions, the 'model' parameter can be used to specify the layer model (default is 'RayleighSpherekska'); and the parameters f, thickness, epsr_background are not needed. Other parameters should be consistent with selected layer model.
         Returns:
 
         """

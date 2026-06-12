@@ -5,25 +5,20 @@ Create: 2023-08-20
 Description:
     A layer consists of discrete scatterers
 """
-
 from abc import abstractmethod
 import numpy as np
-# import scipy.integrate
-from .RayleighSphere import RayleighSphere 
+import scipy.integrate
+from ..core.Layer import Layer
 
-
-class ScattererLayer(RayleighSphere):
+class ScattererLayer(Layer):
     """
     Base class for a layer consists of discrete scatterers
     """
-    def __init__(self, f, thickness=None, epsr_background=1.0, 
-                 epsr_particle=1.0, particle_size=(1.0, 1.0), 
-                 particle_orientation=0, particle_shape=(1, 'SPHEROID'), num_points=1024, **kwargs):
+    def __init__(self, f, epsr_background, epsr_particle, particle_size, particle_orientation, particle_shape=(1, 'SPHEROID'), thickness=None):
         """
         Construct a discrete scatterer layer
         INPUT:
             f: frequency (Hz) of the incident waves
-            thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
             epsr_background: relative complex dielectric constant of the background medium
             epsr_particle: relative complex dielectric constant of the particle
             particle_size: can be a 1)1x2 tuple (radius, fs) = radius of equivalent (volume) sphere, volume fraction of the particles
@@ -35,14 +30,39 @@ class ScattererLayer(RayleighSphere):
                                 or 2) scalar 0=uniform distribution, a value std_orien>0 = specifies the standard deviation of the angle (deg) with respect to
                                 vertical orientation (canting angle)
             particle_shape: (axis_ratio, shape_type) = the horizontal-to-rotational axis ratio, shape_type can be 'SPHEROID' or 'CYLINDER'
-            num_points: num of discrete points to calculate the size averaged parameters
+            thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
         """
-        super(ScattererLayer, self).__init__(f=f, thickness=thickness, epsr_background=epsr_background,
-                                             epsr_particle=epsr_particle, particle_size=particle_size, num_points=num_points)
+        self.epsr_particle = epsr_particle
+        self.epsr = epsr_particle / epsr_background # relative complex diel. of particles to that of background medium
+        self.refractive_index = np.sqrt(self.epsr)
 
         # particle shape
         self.axis_ratio = particle_shape[0]
         self.shape_type = particle_shape[1]
+
+        # particle size
+        if len(particle_size) == 2:
+            self.is_multi_sizes = False
+            self.radius = particle_size[0]
+            self.fs = particle_size[1]
+            # a = self.radius
+            # b = a * self.axis_ratio
+            vol = np.pi * 4 / 3 * (self.radius**3)  # volume of single particles
+            self.n0 = self.fs / vol
+        elif len(particle_size) == 3:
+            self.is_multi_sizes = True
+            self.Dmax = particle_size[1] 
+            self.size_psd = particle_size[2]
+            # equivalent total number concentration of particles per unit volume
+            self.n0, err = scipy.integrate.quad(self.size_psd, 0.0001, self.Dmax) # using 0.0001 as lower limit to avoid division by 0 (Indujaa)
+            # Assume that the D is the diameter of the equivalent-volume sphere
+            fun_vol = lambda D: 4/3*np.pi * (D*0.5)**3 * self.size_psd(D)
+            self.fs, err = scipy.integrate.quad(fun_vol, 0.0001, self.Dmax)
+        else:
+            raise ValueError("Parameter particle_size should be a tuple with 2 or 3 elements!")
+        
+        super(ScattererLayer, self).__init__(f, thickness=thickness, epsr_background=epsr_background)
+        self.Kab = -2 * self.k0 * np.sqrt(self.epsr_background).imag * (1 - self.fs)
 
         # particle orientation
         if type(particle_orientation) == tuple:
@@ -67,8 +87,7 @@ class ScattererLayer(RayleighSphere):
     #     OUTPUT:
     #         P: 4x4 phase matrix
     #     """
-    #     pass
-
+    #     passd
 
     @abstractmethod
     def forward_scattering_amplitudes(self, direction):
@@ -116,8 +135,8 @@ class ScattererLayer(RayleighSphere):
                 [2*np.real(S[1, 0]), -2*np.real(S[0, 1]), -np.real(S[0, 0]-S[1, 1]), np.imag(S[0, 0]+S[1, 1])]])
         Ke = Ke * 2 * np.pi / self.k
 
-        if self.is_multi_sizes is False:
-            Ke = self.n0 * Ke
+        # if self.is_multi_sizes is False:
+            # Ke = self.n0 * Ke # forward_scattering_amplitudes() has already been multiplied by n0
         # for multi_sizes, the n0 has been already multiplied equivalently
 
         return Ke 

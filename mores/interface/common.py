@@ -56,7 +56,7 @@ def R1_shadowing(theta, s):
 
 
 def R2_shadowing(theta, s):
-    """单次散射Shadowing function R1 by Smith[1967]
+    """单次散射Shadowing function R2 by Smith[1967]
     
     Args:
         theta: incidence angle (rad)

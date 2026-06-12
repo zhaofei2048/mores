@@ -50,7 +50,8 @@ class VRT:
         
         ssa = self.layer.single_scattering_albedo()
         if ssa > 0.3:
-            warnings.warn("The ssa ({}) is too high, the first-order iterative VRT solver may obtain inaccurate results.".format(ssa))
+            pass
+            # warnings.warn("The ssa ({}) is too high, the first-order iterative VRT solver may obtain inaccurate results.".format(ssa))
 
 
     # Please preserve this function for reference
@@ -140,7 +141,8 @@ class VRT:
         Mueller matrix for surface scattering in forward scattering alignment (FSA) convention.
         INPUT:
             geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
-                            theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+                            theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles,
+                            Note that theta_i is in surface scattering coordinate, i.e., the angle between -ki and z
         OUTPUT:
             Mue: 4x4 real Mueller matrix
         """
@@ -155,6 +157,7 @@ class VRT:
         INPUT:
             geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
                             theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+                            Note that theta_i is in surface scattering coordinate, i.e., the angle between -ki and z
         OUTPUT:
             Mue: 4x4 real Mueller matrix
         """
@@ -190,6 +193,7 @@ class VRT:
         Args:
             geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
                             theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+                            Note that theta_i is in surface scattering coordinate, i.e., the angle between -ki and z
             path: scattering path 1 for Tc01->Rn12->Tc10, path 2 for Tc01->Rc12->Tn10, path 3 for Tn01->Rc12->Tc10
                 and 0 for total contribution=path_1+path_2+path_3
 
@@ -243,6 +247,7 @@ class VRT:
         Args:
             geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
                             theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+                            Note that theta_i is in surface scattering coordinate, i.e., the angle between -ki and z
             path: scattering path 1 for Tc01->Rn12->Tc10, path 2 for Tc01->Rc12->Tn10, path 3 for Tn01->Rc12->Tc10
                 and 0 for total contribution=path_1+path_2+path_3
 
@@ -296,6 +301,7 @@ class VRT:
         Args:
             geom (tuple): observation angles (theta_s, phi_s, theta_i, phi_i) in degree
                             theta_s and phi_s are scattering angles, and theta_i and phi_i are incidence angles
+                            Note that theta_i is in surface scattering coordinate, i.e., the angle between -ki and z
             path: scattering path 1 for subsurface->volume interaction and 2 for volume->subsurface interaction
                 and 0 for total contribution=path_1+path_2
             iscoherent: True or False (default) for that path 1 and path 2 components should be coherently added. This parameter will only take effect when the path is set to 0.

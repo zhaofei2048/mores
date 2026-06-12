@@ -8,7 +8,8 @@ Description:
 import numpy as np
 import scipy
 import scipy.constants as sci_const
-from scipy.integrate import trapz
+# from scipy.integrate import trapz
+from numpy import trapz
 
 from .RayleighSpherekska import RayleighSpherekska
 from .particle_utils import scattering_cross_section_rayleigh_sphere, absorption_cross_section_rayleigh_sphere

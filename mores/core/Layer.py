@@ -41,8 +41,6 @@ class Layer(ABC):
         self.Lambda = self.Lambda0 / np.sqrt(np.real(self.epsr_background)) # wavelength in the background medium
         self.k = 2 * np.pi / self.Lambda                                    # wavenumber in the background medium        
 
-        v= None
-
         # thickness
         if thickness is None:
             # calculate thickness by penetration depth

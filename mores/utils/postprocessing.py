@@ -32,7 +32,8 @@ def Mueller2sigma0(Mue, pol_r, pol_t):
 
     # normalized stokes vectors of transmitting and receiving antennas
     Int = np.array([0.5*(1+np.cos(2*Psi_t)*np.cos(2*Chi_t)), 0.5*(1-np.cos(2*Psi_t)*np.cos(2*Chi_t)), np.sin(2*Psi_t)*np.cos(2*Chi_t), -np.sin(2*Chi_t)])
-    Inr = np.array([0.5*(1+np.cos(2*Psi_r)*np.cos(2*Chi_r)), 0.5*(1-np.cos(2*Psi_r)*np.cos(2*Chi_r)), -np.sin(2*Psi_r)*np.cos(2*Chi_r), np.sin(2*Chi_r)]) # the minus on 3-th and 4-th elements of Inr is due to the inversed propagation
+    # Inr = np.array([0.5*(1+np.cos(2*Psi_r)*np.cos(2*Chi_r)), 0.5*(1-np.cos(2*Psi_r)*np.cos(2*Chi_r)), -np.sin(2*Psi_r)*np.cos(2*Chi_r), np.sin(2*Chi_r)]) # the minus on 3-th and 4-th elements of Inr is due to the inversed propagation
+    Inr = np.array([0.5*(1+np.cos(2*Psi_r)*np.cos(2*Chi_r)), 0.5*(1-np.cos(2*Psi_r)*np.cos(2*Chi_r)), np.sin(2*Psi_r)*np.cos(2*Chi_r), -np.sin(2*Chi_r)]) # Ulaby 2014, p208, 这里还值得商榷
 
     Q = np.diag([1, 1, 0.5, -0.5])
     Q_BSAFSA = np.diag([1, 1, -1, -1])
@@ -137,3 +138,26 @@ def scattering_amplitudes_to_Mueller(S):
                     [2*np.real(Sxx*np.conj(Syx)), 2*np.real(Syx*np.conj(Syy)), np.real(Sxx*np.conj(Syy)+Sxy*np.conj(Syx)), -np.imag(Sxx*np.conj(Syy)-Sxy*np.conj(Syx))],
                     [2*np.imag(Sxx*np.conj(Syx)), 2*np.imag(Syx*np.conj(Syy)), np.imag(Sxx*np.conj(Syy)+Sxy*np.conj(Syx)), np.real(Sxx*np.conj(Syy)-Sxy*np.conj(Syx))]])
     return Mue
+
+
+def Mueller_matrix_L2M(L):
+    """
+    Convert Mueller/phase matrix L (for stoeks g) to matrix M (for stokes I)
+
+    Args:
+        L: g_s = L@g_i, where g = [|Ex|^2+|Ey|^2, |Ex|^2-|Ey|^2, 2*Re(Ex*Ey_star), 2*Im(Ex*Ey_star)]
+    
+    Returns:
+        M: I_s = M@I_i, where I = [|Ex|^2, |Ey|^2, 2*Re(Ex*Ey_star), 2*Im(Ex*Ey_star)]
+    """
+    Q = np.array([[1., 1, 0, 0],
+                    [1, -1, 0, 0],
+                    [0, 0, 1, 0],
+                    [0, 0, 0, -1]])
+    invQ = np.array([[0.5,  0.5,  0.,  0.],
+                        [0.5, -0.5, -0., -0.],
+                        [0.,  0.,  1.,  0.],
+                        [-0., -0., -0., -1.]])
+    M = invQ @ L @ Q
+
+    return M

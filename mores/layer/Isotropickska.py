@@ -23,7 +23,7 @@ class Isotropickska(Layer):
             epsr_background: relative complex dielectric constant of the background medium
             ks: volume scattering coefficient of the scatterer
             ka: absorption coefficients of the scatterer
-            vol_frac: volume fraction of the particles
+            vol_frac: volume fraction of the particles, have no impact on ks and ka
         """
         super(Isotropickska, self).__init__(f=f, thickness=thickness, epsr_background=epsr_background)
         self.ks = ks

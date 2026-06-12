@@ -6,7 +6,7 @@ Description:
     A layer consists of discrete scatterers (solved by Tmatrix numeric method)
 """
 
-from .ScattererLayer import ScattererLayer
+from .ScattererLayer_old import ScattererLayer
 import numpy as np
 from pytmatrix import tmatrix, orientation
 from pytmatrix.psd import PSDIntegrator
@@ -14,22 +14,20 @@ from pytmatrix import scatter
 from ..utils.postprocessing import Mueller_matrix_L2M
 
 
-class TmatrixScatterer(ScattererLayer):
+class SurfaceTmatrixRocks():
     """
     A layer consists of discrete scatterers (solved by Tmatrix numeric method)
     """
 
-    def __init__(self, f, thickness=None, epsr_background=1.0, 
+    def __init__(self, f,
                  epsr_particle=1.0, particle_size=(1.0, 1.0), 
-                 particle_orientation=0, particle_shape=(1, 'SPHEROID'), num_points=100):
+                 particle_orientation=0, particle_shape=(1, 'SPHEROID'), num_points=1024):
         """
         Construct a discrete scatterer layer driven by pytmatrix
         INPUT:
             f: frequency (Hz) of the incident waves
-            thickness: the thickness (meters) of the layer, if set None, the penetration depth in the medium will be used
-            epsr_background: relative complex dielectric constant of the background medium
             epsr_particle: relative complex dielectric constant of the particle
-            particle_size: can be a 1)1x2 tuple (radius, fs) = radius of equivalent (volume) sphere, volume fraction of the particles
+            particle_size: can be a 1)1x2 tuple (radius, Fs) = radius of equivalent (volume) sphere, area fraction of the particles
                               or 2)1x3 tuple (0, Dmax, size_distribution_func) = Dmax is the maximum diameter of scatterers, size_distribution_func is
                               the size distribution function of particles defined in (0, Dmax), the integration of size_distribution_func between 0 to
                               Dmax should equal to n0, i.e., the number concentration of particles in a unit volume. Note the unit should be meters
@@ -39,13 +37,6 @@ class TmatrixScatterer(ScattererLayer):
             particle_shape: (axis_ratio, shape_type) = the horizontal-to-rotational axis ratio, shape_type can be 'SPHEROID' or 'CYLINDER'
             num_points: num of discrete points to calculate the size averaged parameters
         """
-        # super(TmatrixScatterer, self).__init__(f=f, thickness=thickness, epsr_background=epsr_background, 
-        #                                        epsr_particle=epsr_particle, particle_size=particle_size, 
-        #                                        particle_orientation=particle_orientation, particle_shape=particle_shape, num_points=num_points)
-        super(TmatrixScatterer, self).__init__(f=f, epsr_background=epsr_background, 
-                                               epsr_particle=epsr_particle, particle_size=particle_size, 
-                                               particle_orientation=particle_orientation, particle_shape=particle_shape,
-                                               thickness=thickness)
         if self.shape_type == 'SPHEROID':
             shape_type = tmatrix.Scatterer.SHAPE_SPHEROID
         elif self.shape_type == 'CYLINDER':
@@ -54,7 +45,7 @@ class TmatrixScatterer(ScattererLayer):
             raise ValueError("Wrong shape type of particles")
         m = np.conj(self.refractive_index)  # pytmatrix convention: m=m'+i*m"
         # Construct and init pytmatrix scatterer
-        self.scatterer = tmatrix.Scatterer(radius_type=tmatrix.Scatterer.RADIUS_EQUAL_VOLUME, wavelength=self.Lambda, m=m, axis_ratio=1/self.axis_ratio, # Note that the axis ratio in pytmatrix is defined as horizontal-to-rotational, which is the inverse of our definition
+        self.scatterer = tmatrix.Scatterer(radius_type=tmatrix.Scatterer.RADIUS_EQUAL_VOLUME, wavelength=self.Lambda, m=m, axis_ratio=self.axis_ratio, 
                                            shape=shape_type,
                                            ddelt=1e-3,  # ddelt = The accuracy of the computations (see doc of pytmatrix)
                                             ndgs=2,     # ndgs = Number of division points used to integrate over the particle surface. Try increasing this if the computation do not converge (see doc of pytmatrix)
@@ -74,14 +65,6 @@ class TmatrixScatterer(ScattererLayer):
         if self.is_multi_sizes is False:
             self.scatterer.radius = self.radius
         else:
-            Dmax = self.Dmax
-            chi = np.pi * Dmax / self.Lambda
-            if chi > 3.14:  # limit it for computational efficiency
-                # Dmax_new = 1 * self.Lambda / np.pi
-                Dmax_new = self.Lambda
-                self.Dmax = Dmax_new
-                print(f"Warning: Original Dmax ({Dmax} m) is too large for Tmatrix calculation, and it has been limited to {Dmax_new/self.Lambda} Lambda  for computational efficiency.")
-
             # see doc of pytmatrix PSDIntegrator class for more information (PSD = Particle Size Distribution)
             self.scatterer.psd_integrator = PSDIntegrator(num_points=num_points,  # The number of different (equally spaced) particle diameters at which to store the amplitude and phase matrices (default is 1024)
                                                           D_max=self.Dmax,  # The maximum diameter for which to store the amplitude and phase matrices
@@ -89,11 +72,6 @@ class TmatrixScatterer(ScattererLayer):
                                                           axis_ratio_func=None) # The horizontal-to-rotational axis ratio as a function of size (None for constant axis ratio)
             self.scatterer.psd = self.size_psd
         # print_scatterer(self.scatterer)
-
-        self.ke = None
-        self.ks = None
-        self.ka = None
-        self.ssa = None  # single scattering albedo, set to None for lazy call (i.e., only calculate when calling self.single_scattering_albedo() and reuse the calculated value for later calls until the params are changed)
     
 
     def __Cgeom2PYTMgeom(self, geom):
@@ -123,18 +101,11 @@ class TmatrixScatterer(ScattererLayer):
         geom = self.__Cgeom2PYTMgeom(geom)
         self.scatterer.set_geometry(geom=geom)
         if self.scatterer.psd_integrator != None:   # multi-sized particles
-            print("Calculating phase matrix for multi-sized particles, which may take some time...")
             self.scatterer.psd_integrator.geometries = (geom, ) # can be tuple of geometries: (geom1, geom2, geom3, ...)
             self.scatterer.psd_integrator.init_scatter_table(self.scatterer)
         # print_scatterer(self.scatterer)
         Z = self.scatterer.get_Z()  # phase matrix
         # Z = np.zeros((4, 4))
-        Z[0, 3] = -Z[0, 3]  # 对Stokes矢量[I, Q, U, V]的V进行反号，因为pytmatrix的V是-2Im(Ev*Eh_star)
-        Z[1, 3] = -Z[1, 3]
-        Z[2, 3] = -Z[2, 3]
-        Z[3, 0] = -Z[3, 0]
-        Z[3, 1] = -Z[3, 1]
-        Z[3, 2] = -Z[3, 2]
         
         # convert phase matrix Z for stokes vector g to phase matrix P for stokes vector I
         P = Mueller_matrix_L2M(Z)
@@ -153,73 +124,3 @@ class TmatrixScatterer(ScattererLayer):
         # for multi_sizes, the n0 has been already multiplied equivalently
 
         return P
-        
-        
-    def forward_scattering_amplitudes(self, direction):
-        """
-        Compute scattering amplitudes matrix in forward direction.
-
-        See extinction_matrix() in ScatterLayer also
-        INPUT:
-            direction (tuple): direction of incidence (theta, phi) in degree
-                            Note that theta belongs to [0, 180] defined in volume scattering coordinate.
-                            theta is the angle between z and k.
-        OUTPUT:
-            SAf: 2x2 scattering amplitudes matrix in the forward scattering direction
-                注意此散射矩阵已经考虑了粒子的分布密度, 即已经乘以了n0, n0为单位体积内粒子数
-        """
-        geom = (*direction, *direction) # optical theorem: extinction matrix should calculated from forward scattering
-        geom = self.__Cgeom2PYTMgeom(geom)
-        self.scatterer.set_geometry(geom=geom)
-        if self.scatterer.psd_integrator != None:   # multi-sized particles
-            self.scatterer.psd_integrator.geometries = (geom, ) # can be tuple of geometries: (geom1, geom2, geom3, ...)
-            self.scatterer.psd_integrator.init_scatter_table(self.scatterer)
-        SAf = self.scatterer.get_S()  # phase matrix
-
-        if self.is_multi_sizes is False:
-            SAf = self.n0 * SAf
-        # print('-SAf-')
-        # print_scatterer(self.scatterer)
-        # SAf = np.zeros((2, 2))
-
-        return SAf
-    
-
-    def single_scattering_albedo(self, direction=(45, 0), h_pol=True, lazy_call=True):
-        """The single-scattering albdeo of the particles in the layer.
-        
-        Args:
-            direction (tuple): direction of incidence (theta, phi) in degree and default is (45, 0)
-            h_pol: polarization of incident, true for H (default) and false for V
-            lazy_call: if True (default) then reuse the previously calculated ssa, and False for re-calculation according to the params, 会出现即使direction和h_pol改了, 返回的ssa也不变
-
-        Returns:
-            ssa: single-scattering albedo in [0, 1], ssa = sca_xsect / ext_xsect
-        
-        Note:
-            The ssa of TmatrixScatterer is incident direction and polarization dependent, except for a sphere
-        """
-        if lazy_call is True:
-            if self.ssa is not None:
-                return self.ssa
-        
-        geom = (*direction, *direction) # optical theorem: extinction matrix should calculated from forward scattering
-        geom = self.__Cgeom2PYTMgeom(geom)
-        self.scatterer.set_geometry(geom=geom)
-        if self.scatterer.psd_integrator != None:   # multi-sized particles
-            self.scatterer.psd_integrator.geometries = (geom, ) # can be tuple of geometries: (geom1, geom2, geom3, ...)
-            self.scatterer.psd_integrator.init_scatter_table(self.scatterer, angular_integration=True, verbose=True)
-        
-        sca = scatter.sca_xsect(self.scatterer, h_pol)
-        ext = scatter.ext_xsect(self.scatterer, h_pol)
-        if self.is_multi_sizes is False:
-            sca = self.n0 * sca
-            ext = self.n0 * ext
-        
-        # for absorbing host medium
-        ext = ext + self.Kab
-
-        ssa = sca / ext
-        self.ssa = ssa
-
-        return ssa
